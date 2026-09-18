@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#fafafa">
+  <meta name="description" content="leonard – лекции по программированию">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="leonard">
+  <title>leonard</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
+  <link id="hljsTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2318181f'/%3E%3Ctext x='50' y='68' font-family='monospace' font-size='60' font-weight='700' fill='%23fff' text-anchor='middle'%3E%2B%2B%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="read-progress" id="readProgress"></div>
+
+  <header class="topnav" id="topnav">
+    <div class="topnav-inner">
+      <button class="icon-btn hamburger" id="hamburger" aria-label="Меню">
+        <i class="ico-bars"></i>
+      </button>
+
+      <a class="logo" href="#" id="logoLink">
+        <span class="logo-mark"><i class="ico-bolt" id="logoIcon"></i></span>
+        <span class="logo-text" id="logoText">leonard<em>cpp</em></span>
+      </a>
+
+      <button class="course-switch" id="courseSwitch" aria-label="Сменить курс">
+        <i class="ico-swap"></i>
+      </button>
+
+      <div class="lesson-context" id="lessonContext" hidden>
+        <span class="lesson-context-num" id="lessonContextNum">Урок 1</span>
+        <span class="lesson-context-sep">·</span>
+        <span class="lesson-context-title" id="lessonContextTitle">…</span>
+        <span class="lesson-context-sep">·</span>
+        <span class="lesson-context-time" id="lessonContextTime">– мин</span>
+      </div>
+
+      <nav class="nav-actions">
+        <button class="nav-btn" data-view="lessons">
+          <i class="ico-book"></i>
+          <span class="nav-label">Уроки</span>
+        </button>
+        <button class="nav-btn" data-view="search">
+          <i class="ico-search"></i>
+          <span class="nav-label">Поиск</span>
+        </button>
+        <button class="nav-btn" data-view="favorites">
+          <i class="ico-star"></i>
+          <span class="nav-label">Избранное</span>
+        </button>
+        <button class="nav-btn theme-btn" id="themeBtn" aria-label="Сменить тему">
+          <i class="ico-monitor" id="themeIcon"></i>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <i class="ico-book"></i>
+        <h2>Уроки</h2>
+        <span class="sidebar-count" id="sidebarCount">0</span>
+      </div>
+      <ul class="lesson-list" id="lessonList"></ul>
+    </aside>
+
+    <main class="content" id="contentArea">
+      <article class="view lesson-view" id="lessonView">
+        <div class="lesson-header">
+          <div class="lesson-meta">
+            <span class="lesson-chip" id="lessonChip">Урок 1</span>
+            <span class="lesson-chip lesson-chip-time" id="lessonTimeChip" hidden>
+              <i class="ico-clock"></i>
+              <span id="lessonTimeText"></span>
+            </span>
+            <span class="lesson-chip lesson-chip-fav" id="lessonFavChip" hidden>
+              <i class="ico-star"></i> В избранном
+            </span>
+          </div>
+          <h1 class="lesson-title" id="lessonTitle">Загрузка…</h1>
+        </div>
+        <div class="lesson-body markdown" id="lessonBody"></div>
+        <div class="lesson-footer">
+          <button class="next-btn" id="nextBtn">
+            <span id="nextBtnText">Дальше</span>
+            <i class="ico-arrow-right"></i>
+          </button>
+        </div>
+      </article>
+
+      <div class="view search-view" id="searchView" hidden>
+        <div class="search-stage">
+          <div class="search-answer" id="searchResults"></div>
+
+          <div class="search-bottom">
+            <div class="search-greeting">
+              <h1 class="search-title">О чём хотите узнать?</h1>
+              <p class="search-subtitle">Поиск по урокам курса – по словам, темам и коду</p>
+            </div>
+
+            <div class="search-bar-wrap">
+              <div class="search-bar" id="searchBar">
+                <i class="ico-search search-bar-icon"></i>
+                <textarea
+                  id="searchInput"
+                  class="search-bar-input"
+                  placeholder="Спросите что-нибудь про C++…"
+                  autocomplete="off"
+                  spellcheck="false"
+                  rows="1"
+                ></textarea>
+                <button class="search-bar-action" id="searchClear" hidden aria-label="Очистить">
+                  <i class="ico-close"></i>
+                </button>
+              </div>
+
+              <div class="search-chips" id="searchChips"></div>
+
+            <div class="search-filters" id="searchFilters" hidden>
+              <button class="filter-chip" data-filter="title">в названии</button>
+              <button class="filter-chip" data-filter="code">в коде</button>
+              <button class="filter-chip" data-filter="unread">непрочитанные</button>
+              <button class="filter-chip" data-filter="fav">избранные</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view favorites-view" id="favoritesView" hidden>
+        <h1 class="favorites-title">Избранное</h1>
+        <p class="favorites-subtitle" id="favoritesSubtitle">Здесь появятся уроки, которые вы отметили</p>
+        <div class="fav-grid" id="favGrid"></div>
+        <div class="heatmap-wrap">
+          <h2 class="heatmap-title">Прогресс курса</h2>
+          <div class="heatmap" id="heatmap"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="toc" id="toc" hidden>
+      <div class="toc-inner" id="tocInner"></div>
+      <div class="minimap" id="minimap"></div>
+    </aside>
+  </div>
+
+  <div class="context-menu" id="contextMenu" hidden>
+    <button class="ctx-item" id="ctxFavBtn">
+      <i class="ico-star" id="ctxFavIcon"></i>
+      <span id="ctxFavText">Добавить в избранное</span>
+    </button>
+    <button class="ctx-item" id="ctxResetBtn">
+      <i class="ico-undo"></i>
+      <span>Сбросить прогресс</span>
+    </button>
+  </div>
+
+  <div class="course-menu" id="courseMenu" hidden></div>
+
+  <div class="palette-overlay" id="paletteOverlay" hidden>
+    <div class="palette-frame" id="paletteBox">
+      <div class="palette">
+        <div class="palette-input-wrap">
+          <i class="ico-search"></i>
+          <input type="text" id="paletteInput" placeholder="Команда или урок…" autocomplete="off" spellcheck="false">
+          <button class="palette-close" id="paletteClose" aria-label="Закрыть">
+            <i class="ico-close"></i>
+          </button>
+        </div>
+        <div class="palette-results" id="paletteResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shortcuts-overlay" id="shortcutsOverlay" hidden>
+    <div class="shortcuts-modal">
+      <div class="shortcuts-head">
+        <h3>Горячие клавиши</h3>
+        <button class="icon-btn" id="shortcutsClose">
+          <i class="ico-close"></i>
+        </button>
+      </div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row"><kbd>Ctrl</kbd><kbd>K</kbd><span>Командная палитра</span></div>
+        <div class="shortcut-row"><kbd>/</kbd><span>Поиск по урокам</span></div>
+        <div class="shortcut-row"><kbd>J</kbd> / <kbd>K</kbd><span>Следующий / предыдущий урок</span></div>
+        <div class="shortcut-row"><kbd>←</kbd> / <kbd>→</kbd><span>Следующий / предыдущий урок</span></div>
+        <div class="shortcut-row"><kbd>F</kbd><span>Добавить/убрать из избранного</span></div>
+        <div class="shortcut-row"><kbd>T</kbd><span>Сменить тему</span></div>
+        <div class="shortcut-row"><kbd>G</kbd><span>К последнему доступному уроку</span></div>
+        <div class="shortcut-row"><kbd>C</kbd><span>Сменить курс</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>Закрыть / сбросить</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>Эта справка</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="quote-menu" id="quoteMenu" hidden>
+    <button class="ctx-item" id="quoteBtn">
+      <i class="ico-quote"></i>
+      <span>Скопировать как цитату</span>
+    </button>
+  </div>
+
+  <script src="courses.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
