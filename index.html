@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#fafafa">
-  <meta name="description" content="leonard – лекции по программированию">
+  <meta name="description" content="leonard — лекции по программированию">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="leonard">
@@ -22,7 +22,7 @@
 <body>
   <div class="read-progress" id="readProgress"></div>
 
-  <header class="topnav" id="topnav">
+  <header class="topnav">
     <div class="topnav-inner">
       <button class="icon-btn hamburger" id="hamburger" aria-label="Меню">
         <i class="ico-bars"></i>
@@ -42,7 +42,12 @@
         <span class="lesson-context-sep">·</span>
         <span class="lesson-context-title" id="lessonContextTitle">…</span>
         <span class="lesson-context-sep">·</span>
-        <span class="lesson-context-time" id="lessonContextTime">– мин</span>
+        <span class="lesson-context-time" id="lessonContextTime">— мин</span>
+      </div>
+
+      <div class="streak-badge" id="streakBadge" hidden title="Дней подряд">
+        <i class="ico-fire"></i>
+        <span id="streakCount">0</span>
       </div>
 
       <nav class="nav-actions">
@@ -107,8 +112,8 @@
 
           <div class="search-bottom">
             <div class="search-greeting">
-              <h1 class="search-title">О чём хочешь узнать?</h1>
-              <p class="search-subtitle">Поиск по урокам курса – по словам, темам и коду</p>
+              <h1 class="search-title">О чём хотите узнать?</h1>
+              <p class="search-subtitle">Поиск по урокам курса — по словам, темам и коду</p>
             </div>
 
             <div class="search-bar-wrap">
@@ -117,7 +122,7 @@
                 <textarea
                   id="searchInput"
                   class="search-bar-input"
-                  placeholder="Спроси что-нибудь про C++…"
+                  placeholder="Спросите что-нибудь про C++…"
                   autocomplete="off"
                   spellcheck="false"
                   rows="1"
@@ -128,6 +133,7 @@
               </div>
 
               <div class="search-chips" id="searchChips"></div>
+            </div>
 
             <div class="search-filters" id="searchFilters" hidden>
               <button class="filter-chip" data-filter="title">в названии</button>
@@ -141,7 +147,7 @@
 
       <div class="view favorites-view" id="favoritesView" hidden>
         <h1 class="favorites-title">Избранное</h1>
-        <p class="favorites-subtitle" id="favoritesSubtitle">Здесь появятся уроки, которые ты отметил</p>
+        <p class="favorites-subtitle">Здесь появятся уроки, которые вы отметили</p>
         <div class="fav-grid" id="favGrid"></div>
         <div class="heatmap-wrap">
           <h2 class="heatmap-title">Прогресс курса</h2>

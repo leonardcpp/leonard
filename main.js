@@ -104,6 +104,10 @@
     quoteBtn: $('#quoteBtn'),
   };
 
+  // =========================================================
+  // Storage
+  // =========================================================
+
   const keyOf = (n) => `${state.currentCourseId}:${n}`;
   const parseKey = (key) => {
     const i = key.indexOf(':');
@@ -111,37 +115,8 @@
     return { course: key.slice(0, i), lesson: Number(key.slice(i + 1)) };
   };
 
-  const migrateLegacy = () => {
-    if (localStorage.getItem('leonard.migrated-v2')) return;
-
-    const read = JSON.parse(localStorage.getItem(K.READ) || '[]');
-    const fav = JSON.parse(localStorage.getItem(K.FAV) || '[]');
-    const notes = JSON.parse(localStorage.getItem(K.NOTES) || '{}');
-    const cur = localStorage.getItem(K.CUR);
-
-    if (read.length && typeof read[0] === 'number') {
-      localStorage.setItem(K.READ, JSON.stringify(read.map(n => `cpp:${n}`)));
-    }
-    if (fav.length && typeof fav[0] === 'number') {
-      localStorage.setItem(K.FAV, JSON.stringify(fav.map(n => `cpp:${n}`)));
-    }
-    const newNotes = {};
-    for (const k in notes) {
-      if (/^\d+$/.test(k)) newNotes[`cpp:${k}`] = notes[k];
-      else newNotes[k] = notes[k];
-    }
-    localStorage.setItem(K.NOTES, JSON.stringify(newNotes));
-    if (cur && /^\d+$/.test(cur)) {
-      localStorage.setItem(K.CUR + ':cpp', cur);
-      localStorage.removeItem(K.CUR);
-    }
-
-    localStorage.setItem('leonard.migrated-v2', '1');
-  };
-
   const loadState = () => {
     try {
-      migrateLegacy();
       state.theme = localStorage.getItem(K.THEME) || 'system';
       state.readLessons = new Set(JSON.parse(localStorage.getItem(K.READ) || '[]'));
       state.favorites = new Set(JSON.parse(localStorage.getItem(K.FAV) || '[]'));
@@ -198,33 +173,50 @@
     renderSearchSuggestions();
   };
 
+  // =========================================================
+  // Utilities
+  // =========================================================
+
   const todayKey = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  const updateStreak = () => {
-    const today = todayKey();
-    const last = state.streak.lastDay;
-    if (last === today) return;
-    const yest = new Date();
-    yest.setDate(yest.getDate() - 1);
-    const yesterday = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
-    if (last === yesterday) state.streak.count += 1;
-    else state.streak.count = 1;
-    state.streak.lastDay = today;
-    persist(K.STREAK, state.streak);
-    renderStreak();
+  const escapeHtml = (s) => String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  const slugify = (s) => s
+    .toLowerCase()
+    .replace(/[^\w\u0400-\u04ff\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+
+  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const isHttpContext = () => location.protocol === 'http:' || location.protocol === 'https:';
+
+  const isVerified = (n) => state.verified.has(n);
+  const isRead = (n) => state.readLessons.has(keyOf(n));
+  const isFav = (n) => state.favorites.has(keyOf(n));
+
+  const isUnlocked = (n) => {
+    const idx = state.lessons.indexOf(n);
+    if (idx <= 0) return true;
+    for (let i = 0; i < idx; i++) {
+      if (!state.readLessons.has(keyOf(state.lessons[i]))) return false;
+    }
+    return true;
   };
 
-  const renderStreak = () => {
-    if (state.streak.count > 0) {
-      el.streakBadge.hidden = false;
-      el.streakCount.textContent = state.streak.count;
-    } else {
-      el.streakBadge.hidden = true;
-    }
-  };
+  const unlockedLessons = () => state.lessons.filter(isUnlocked);
+
+  // =========================================================
+  // Theme
+  // =========================================================
 
   const resolveTheme = (pref) => {
     if (pref === 'system') {
@@ -273,20 +265,36 @@
     showToast(labels[next]);
   };
 
-  const isVerified = (n) => state.verified.has(n);
-  const isRead = (n) => state.readLessons.has(keyOf(n));
-  const isFav = (n) => state.favorites.has(keyOf(n));
+  // =========================================================
+  // Streak
+  // =========================================================
 
-  const isUnlocked = (n) => {
-    const idx = state.lessons.indexOf(n);
-    if (idx <= 0) return true;
-    for (let i = 0; i < idx; i++) {
-      if (!state.readLessons.has(keyOf(state.lessons[i]))) return false;
-    }
-    return true;
+  const updateStreak = () => {
+    const today = todayKey();
+    const last = state.streak.lastDay;
+    if (last === today) return;
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const yesterday = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+    if (last === yesterday) state.streak.count += 1;
+    else state.streak.count = 1;
+    state.streak.lastDay = today;
+    persist(K.STREAK, state.streak);
+    renderStreak();
   };
 
-  const unlockedLessons = () => state.lessons.filter(isUnlocked);
+  const renderStreak = () => {
+    if (state.streak.count > 0) {
+      el.streakBadge.hidden = false;
+      el.streakCount.textContent = state.streak.count;
+    } else {
+      el.streakBadge.hidden = true;
+    }
+  };
+
+  // =========================================================
+  // Lesson loading
+  // =========================================================
 
   const extractTitle = (md) => {
     const m = md.match(/^#\s+(.+)$/m);
@@ -310,8 +318,6 @@
     const codes = md.match(/```[\s\S]*?```/g) || [];
     return codes.join(' ').replace(/```[a-z]*/gi, ' ');
   };
-
-  const isHttpContext = () => location.protocol === 'http:' || location.protocol === 'https:';
 
   const fetchLesson = async (n) => {
     const cid = state.currentCourseId;
@@ -338,7 +344,7 @@
     if (raw == null) {
       const hint = isHttpContext()
         ? `Проверь, что файл courses/${cid}/lessons/${n}.md существует.`
-        : `Открыто как file:// – fetch не работает. Запусти локальный сервер.`;
+        : `Открыто как file:// — fetch не работает. Запусти локальный сервер.`;
       throw new Error(`Урок ${n} не найден. ${hint}`);
     }
 
@@ -356,22 +362,14 @@
     if (state.view === 'favorites') renderHeatmap();
   };
 
-  const escapeHtml = (s) => String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-
-  const slugify = (s) => s
-    .toLowerCase()
-    .replace(/[^\w\u0400-\u04ff\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-');
+  // =========================================================
+  // Sidebar
+  // =========================================================
 
   const renderSidebar = () => {
     el.sidebarCount.textContent = state.lessons.length;
     el.lessonList.innerHTML = '';
+
     state.lessons.forEach(n => {
       const unlocked = isUnlocked(n);
       const read = isRead(n);
@@ -401,6 +399,10 @@
       el.lessonList.appendChild(li);
     });
   };
+
+  // =========================================================
+  // Lesson render
+  // =========================================================
 
   const processLessonHtml = (html) => {
     const wrap = document.createElement('div');
@@ -632,6 +634,42 @@
     setTimeout(() => unwrapSpan(span), 2200);
   };
 
+  const renderLessonContent = (n) => {
+    const lesson = state.cache[keyOf(n)];
+    if (!lesson) return;
+
+    el.lessonChip.textContent = `Урок ${n}`;
+    el.lessonTitle.textContent = lesson.title;
+    el.lessonTimeText.textContent = `${lesson.minutes} мин`;
+    el.lessonTimeChip.hidden = false;
+    el.lessonBody.innerHTML = processLessonHtml(lesson.html);
+
+    el.lessonBody.querySelectorAll('pre code').forEach(block => {
+      try { hljs.highlightElement(block); } catch (e) {}
+    });
+
+    attachCopyButtons();
+
+    el.lessonBody.querySelectorAll('p').forEach(p => {
+      if (p.closest('blockquote, pre, li')) return;
+      const text = p.textContent.trim().slice(0, 40);
+      if (!text) return;
+      const notes = state.notes[keyOf(n)] || {};
+      if (notes[text]) attachNoteMarker(p, n, text);
+      p.addEventListener('dblclick', (e) => {
+        if (e.target.closest('a, code, .note-marker')) return;
+        openNotePopover(p, n, text);
+      });
+    });
+
+    renderToc();
+    updateLessonContext();
+    updateNextButton();
+    updateFavChip();
+
+    void el.lessonBody.offsetHeight;
+  };
+
   const renderLesson = async (n, opts = {}) => {
     if (!isUnlocked(n)) {
       showToast('Сначала пройдите предыдущий урок');
@@ -688,41 +726,6 @@
     }
   };
 
-  const renderLessonContent = (n) => {
-    const lesson = state.cache[keyOf(n)];
-    if (!lesson) return;
-    el.lessonChip.textContent = `Урок ${n}`;
-    el.lessonTitle.textContent = lesson.title;
-    el.lessonTimeText.textContent = `${lesson.minutes} мин`;
-    el.lessonTimeChip.hidden = false;
-    el.lessonBody.innerHTML = processLessonHtml(lesson.html);
-
-    el.lessonBody.querySelectorAll('pre code').forEach(block => {
-      try { hljs.highlightElement(block); } catch (e) {}
-    });
-
-    attachCopyButtons();
-
-    el.lessonBody.querySelectorAll('p').forEach(p => {
-      if (p.closest('blockquote, pre, li')) return;
-      const text = p.textContent.trim().slice(0, 40);
-      if (!text) return;
-      const notes = state.notes[keyOf(n)] || {};
-      if (notes[text]) attachNoteMarker(p, n, text);
-      p.addEventListener('dblclick', (e) => {
-        if (e.target.closest('a, code, .note-marker')) return;
-        openNotePopover(p, n, text);
-      });
-    });
-
-    renderToc();
-    updateLessonContext();
-    updateNextButton();
-    updateFavChip();
-
-    void el.lessonBody.offsetHeight;
-  };
-
   const updateLessonContext = () => {
     const n = state.currentLesson;
     if (!n || state.view !== 'lesson') {
@@ -732,7 +735,7 @@
     const lesson = state.cache[keyOf(n)];
     el.lessonContextNum.textContent = `Урок ${n}`;
     el.lessonContextTitle.textContent = lesson?.title || '…';
-    el.lessonContextTime.textContent = lesson ? `${lesson.minutes} мин` : '–';
+    el.lessonContextTime.textContent = lesson ? `${lesson.minutes} мин` : '—';
     el.lessonContext.hidden = state.view !== 'lesson' || el.contentArea.scrollTop < 60;
   };
 
@@ -822,11 +825,17 @@
     switchView('lesson');
   };
 
+  // =========================================================
+  // Views
+  // =========================================================
+
   const switchView = (view) => {
     state.view = view;
+
     el.lessonView.hidden = view !== 'lesson';
     el.searchView.hidden = view !== 'search';
     el.favoritesView.hidden = view !== 'favorites';
+
     if (view !== 'lesson') el.toc.hidden = true;
 
     el.navBtns.forEach(b => {
@@ -840,7 +849,10 @@
     updateReadProgress();
     updateLessonContext();
 
-    if (view === 'favorites') { renderFavorites(); renderHeatmap(); }
+    if (view === 'favorites') {
+      renderFavorites();
+      renderHeatmap();
+    }
     if (view === 'search') {
       setTimeout(() => {
         el.searchInput.focus();
@@ -850,9 +862,80 @@
     if (view === 'lesson') setTimeout(renderToc, 50);
   };
 
-  let searchTimeout;
+  // =========================================================
+  // Favorites
+  // =========================================================
 
-  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const renderFavorites = () => {
+    const cid = state.currentCourseId || 'cpp';
+
+    const favs = [];
+    state.favorites.forEach(key => {
+      const i = key.indexOf(':');
+      const course = i === -1 ? 'cpp' : key.slice(0, i);
+      const lesson = i === -1 ? Number(key) : Number(key.slice(i + 1));
+      if (course !== cid) return;
+      if (!Number.isFinite(lesson)) return;
+      favs.push(lesson);
+    });
+    favs.sort((a, b) => a - b);
+
+    el.favGrid.innerHTML = '';
+
+    if (favs.length === 0) {
+      el.favGrid.innerHTML = `
+        <div class="search-empty" style="grid-column: 1/-1;">
+          <i class="ico-star-o"></i>
+          Пока нет избранных уроков в этом курсе.<br>
+          Нажмите правой кнопкой мыши на урок в списке, чтобы добавить его.
+        </div>`;
+      return;
+    }
+
+    favs.forEach(n => {
+      const lesson = state.cache[keyOf(n)];
+      const title = lesson?.title || `Урок ${n}`;
+      const read = isRead(n);
+      const minutes = lesson?.minutes || '—';
+
+      const card = document.createElement('div');
+      card.className = 'fav-card';
+      card.dataset.lesson = n;
+      card.innerHTML = `
+        <div class="fav-card-num">Урок ${n} · ${minutes} мин</div>
+        <div class="fav-card-title">${escapeHtml(title)}</div>
+        <div class="fav-card-foot">
+          <span>${read ? 'Прочитан' : 'Не прочитан'}</span>
+          <i class="ico-star"></i>
+        </div>
+      `;
+      el.favGrid.appendChild(card);
+    });
+  };
+
+  const renderHeatmap = () => {
+    el.heatmap.innerHTML = '';
+    state.lessons.forEach(n => {
+      const cell = document.createElement('div');
+      cell.className = 'heat-cell';
+      if (!isUnlocked(n)) cell.classList.add('locked');
+      else if (isRead(n)) cell.classList.add('read');
+      if (state.currentLesson === n) cell.classList.add('active');
+      cell.textContent = n;
+      cell.title = state.cache[keyOf(n)]?.title || `Урок ${n}`;
+      cell.addEventListener('click', () => {
+        if (isUnlocked(n)) renderLesson(n);
+        else showToast('Урок заблокирован');
+      });
+      el.heatmap.appendChild(cell);
+    });
+  };
+
+  // =========================================================
+  // Search
+  // =========================================================
+
+  let searchTimeout;
 
   const findMatches = (text, query, limit = 4) => {
     const lower = text.toLowerCase();
@@ -1013,7 +1096,6 @@
           title: lesson.title,
           snippets,
           isCodeSource,
-          titleMatch: q && lowerTitle.includes(q),
           query: q,
         });
       }
@@ -1128,64 +1210,31 @@
     el.searchResults.innerHTML = html;
   };
 
-  const renderFavorites = () => {
-    const favs = [...state.favorites]
-      .map(parseKey)
-      .filter(x => x.course === state.currentCourseId)
-      .map(x => x.lesson)
-      .filter(n => state.lessons.includes(n) && isUnlocked(n))
-      .sort((a, b) => a - b);
+  const expandSnippets = (btn) => {
+    const lessonNum = Number(btn.dataset.lesson);
+    const rest = JSON.parse(btn.dataset.rest || '[]');
+    const container = btn.parentElement.querySelector('.search-result-snippets');
+    const q = el.searchInput.value.trim().toLowerCase();
+    const re = q ? new RegExp(`(${escapeRegExp(q)})`, 'gi') : null;
 
-    el.favGrid.innerHTML = '';
-
-    if (favs.length === 0) {
-      el.favGrid.innerHTML = `
-        <div class="search-empty" style="grid-column: 1/-1;">
-          <i class="ico-star-o"></i>
-          Пока нет избранных уроков в этом курсе.<br>
-          Нажмите правой кнопкой мыши на урок в списке, чтобы добавить его.
-        </div>`;
-      return;
-    }
-
-    favs.forEach(n => {
-      const lesson = state.cache[keyOf(n)];
-      const title = lesson?.title || `Урок ${n}`;
-      const read = isRead(n);
-      const minutes = lesson?.minutes || '–';
-
-      const card = document.createElement('div');
-      card.className = 'fav-card';
-      card.dataset.lesson = n;
-      card.innerHTML = `
-        <div class="fav-card-num">Урок ${n} · ${minutes} мин</div>
-        <div class="fav-card-title">${escapeHtml(title)}</div>
-        <div class="fav-card-foot">
-          <span>${read ? 'Прочитан' : 'Не прочитан'}</span>
-          <i class="ico-star"></i>
-        </div>
-      `;
-      el.favGrid.appendChild(card);
+    rest.forEach(s => {
+      const div = document.createElement('div');
+      const inner = re
+        ? escapeHtml(s.snippet).replace(re, '<mark>$1</mark>')
+        : escapeHtml(s.snippet);
+      div.className = 'search-snippet';
+      div.dataset.lesson = lessonNum;
+      div.dataset.match = s.snippet;
+      div.innerHTML = inner;
+      container.appendChild(div);
     });
+
+    btn.remove();
   };
 
-  const renderHeatmap = () => {
-    el.heatmap.innerHTML = '';
-    state.lessons.forEach(n => {
-      const cell = document.createElement('div');
-      cell.className = 'heat-cell';
-      if (!isUnlocked(n)) cell.classList.add('locked');
-      else if (isRead(n)) cell.classList.add('read');
-      if (state.currentLesson === n) cell.classList.add('active');
-      cell.textContent = n;
-      cell.title = state.cache[keyOf(n)]?.title || `Урок ${n}`;
-      cell.addEventListener('click', () => {
-        if (isUnlocked(n)) renderLesson(n);
-        else showToast('Урок заблокирован');
-      });
-      el.heatmap.appendChild(cell);
-    });
-  };
+  // =========================================================
+  // Context menu
+  // =========================================================
 
   const openContextMenu = (x, y, lessonNum) => {
     if (!isUnlocked(lessonNum)) return;
@@ -1217,6 +1266,10 @@
     state.ctxLesson = null;
   };
 
+  // =========================================================
+  // Toast
+  // =========================================================
+
   let toastTimer;
   const showToast = (msg) => {
     el.toast.textContent = msg;
@@ -1224,6 +1277,10 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.toast.classList.remove('show'), 2200);
   };
+
+  // =========================================================
+  // Long-press
+  // =========================================================
 
   const attachLongPress = (node, cb) => {
     let timer = null;
@@ -1238,13 +1295,17 @@
     }, { passive: true });
     node.addEventListener('touchmove', (e) => {
       const t = e.touches[0];
-      if (Math.abs(t.clientX - startX) > 8 || Math.abs(t.clientY - startY) > 8) {
+      if (Math.abs(t.clientX - startX) > 12 || Math.abs(t.clientY - startY) > 12) {
         moved = true; clear();
       }
     }, { passive: true });
     node.addEventListener('touchend', clear);
     node.addEventListener('touchcancel', clear);
   };
+
+  // =========================================================
+  // Notes
+  // =========================================================
 
   const openNotePopover = (p, lessonNum, textKey) => {
     $$('.note-popover').forEach(n => n.remove());
@@ -1323,6 +1384,10 @@
     });
   };
 
+  // =========================================================
+  // Course menu
+  // =========================================================
+
   const openCourseMenu = () => {
     el.courseMenu.innerHTML = '';
     state.courses.forEach(c => {
@@ -1391,6 +1456,10 @@
     prefetchAll();
   };
 
+  // =========================================================
+  // Command palette
+  // =========================================================
+
   const openPalette = () => {
     if (state.paletteOpen) return;
     state.paletteOpen = true;
@@ -1439,6 +1508,7 @@
       { id: 'shortcuts', label: 'Показать горячие клавиши', icon: 'bolt', action: () => { closePalette(); openShortcuts(); } },
       { id: 'export', label: 'Экспортировать прогресс', icon: 'download', action: () => { closePalette(); exportProgress(); } },
       { id: 'import', label: 'Импортировать прогресс', icon: 'upload', action: () => { closePalette(); importProgress(); } },
+      { id: 'github', label: 'Открыть GitHub репозиторий', icon: 'code', action: () => { closePalette(); window.open('https://github.com/leonardcpp/leonard', '_blank', 'noopener'); } },
     ];
 
     const lessons = unlockedLessons().map(n => ({
@@ -1522,6 +1592,10 @@
   const openShortcuts = () => { el.shortcutsOverlay.hidden = false; };
   const closeShortcuts = () => { el.shortcutsOverlay.hidden = true; };
 
+  // =========================================================
+  // Export / Import
+  // =========================================================
+
   const exportProgress = () => {
     const data = {
       version: 2,
@@ -1570,6 +1644,10 @@
     input.click();
   };
 
+  // =========================================================
+  // Quote
+  // =========================================================
+
   const setupQuote = () => {
     document.addEventListener('mouseup', (e) => {
       if (state.view !== 'lesson') return;
@@ -1593,7 +1671,7 @@
       const n = state.currentLesson;
       const title = state.cache[keyOf(n)]?.title || '';
       const course = state.courses.find(c => c.id === state.currentCourseId);
-      const quote = `«${text}»\n\n– leonard ${course?.title || ''}, урок ${n}: ${title}`;
+      const quote = `«${text}»\n\n— leonard ${course?.title || ''}, урок ${n}: ${title}`;
       navigator.clipboard.writeText(quote).then(() => {
         showToast('Цитата скопирована');
         el.quoteMenu.hidden = true;
@@ -1616,27 +1694,9 @@
     el.searchInput.style.height = Math.min(el.searchInput.scrollHeight, 200) + 'px';
   };
 
-  const expandSnippets = (btn) => {
-    const lessonNum = Number(btn.dataset.lesson);
-    const rest = JSON.parse(btn.dataset.rest || '[]');
-    const container = btn.parentElement.querySelector('.search-result-snippets');
-    const q = el.searchInput.value.trim().toLowerCase();
-    const re = q ? new RegExp(`(${escapeRegExp(q)})`, 'gi') : null;
-
-    rest.forEach(s => {
-      const div = document.createElement('div');
-      const inner = re
-        ? escapeHtml(s.snippet).replace(re, '<mark>$1</mark>')
-        : escapeHtml(s.snippet);
-      div.className = 'search-snippet';
-      div.dataset.lesson = lessonNum;
-      div.dataset.match = s.snippet;
-      div.innerHTML = inner;
-      container.appendChild(div);
-    });
-
-    btn.remove();
-  };
+  // =========================================================
+  // Events
+  // =========================================================
 
   const setupEvents = () => {
     el.themeBtn.addEventListener('click', cycleTheme);
@@ -1957,6 +2017,10 @@
     setupQuote();
   };
 
+  // =========================================================
+  // Init
+  // =========================================================
+
   const init = async () => {
     if (typeof COURSES === 'undefined' || !Array.isArray(COURSES) || !COURSES.length) {
       document.body.innerHTML =
@@ -1971,6 +2035,7 @@
     const saved = localStorage.getItem(K.COURSE);
     const cid = (saved && COURSES.find(c => c.id === saved)) ? saved : COURSES[0].id;
     state.currentCourseId = cid;
+    persist(K.COURSE, cid);
 
     state.searchHistory = getCourseHistory(cid);
 
